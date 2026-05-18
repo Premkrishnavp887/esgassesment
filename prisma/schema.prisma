@@ -10,14 +10,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  role      Role     @default(USER)
+model UserAccount {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  name        String?
+  password    String
+  role        Role         @default(USER)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  assessments Assessment[]
 }
 
 enum Role {
@@ -26,10 +27,182 @@ enum Role {
   ASSESSOR
 }
 
+enum AssessmentStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum ValidationStatus {
+  PENDING
+  PASSED
+  FAILED
+  WARNING
+}
+
 model Assessment {
+  id                String             @id @default(uuid())
+  title             String
+  description       String?
+  status            AssessmentStatus   @default(DRAFT)
+  userId            String
+  user              UserAccount        @relation(fields: [userId], references: [id])
+  uploadedData      UploadedData[]
+  calculatedMetrics CalculatedMetric[]
+  emissionsSummary  EmissionsSummary?
+  parameterScores   ParameterScore[]
+  reports           Report[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model UploadedData {
+  id               String            @id @default(uuid())
+  assessmentId     String
+  assessment       Assessment        @relation(fields: [assessmentId], references: [id])
+  fileName         String
+  fileType         String
+  fileUrl          String
+  dataJson         Json?
+  validationStatus ValidationStatus  @default(PENDING)
+  validationResults ValidationResult[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model ValidationResult {
+  id             String       @id @default(uuid())
+  uploadedDataId String
+  uploadedData   UploadedData @relation(fields: [uploadedDataId], references: [id])
+  ruleName       String
+  status         ValidationStatus
+  message        String?
+  createdAt      DateTime     @default(now())
+}
+
+model CalculatedMetric {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  metricName   String
+  value        Float
+  unit         String?
+  confidence   Float?
+  createdAt    DateTime   @default(now())
+}
+
+model EmissionsSummary {
+  id           String     @id @default(uuid())
+  assessmentId String     @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  scope1       Float      @default(0)
+  scope2       Float      @default(0)
+  scope3       Float      @default(0)
+  total        Float      @default(0)
+  unit         String     @default("tCO2e")
+  updatedAt    DateTime   @updatedAt
+}
+
+model ParameterScore {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  parameter    String
+  score        Float
+  maxScore     Float      @default(100)
+  weight       Float      @default(1)
+  createdAt    DateTime   @default(now())
+}
+
+model CertificationScore {
+  id              String   @id @default(uuid())
+  assessmentId    String
+  certification   String
+  score           Float
+  isApplicable    Boolean  @default(true)
+  lastAuditDate   DateTime?
+  createdAt       DateTime @default(now())
+}
+
+model RegulatoryScore {
+  id             String   @id @default(uuid())
+  assessmentId   String
+  framework      String
+  complianceLevel String
+  gapCount       Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model Report {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  reportType   String
+  fileUrl      String
+  generatedAt  DateTime   @default(now())
+}
+
+// Reference Tables
+
+model StrengthRule {
+  id             String   @id @default(uuid())
+  parameter      String
+  threshold      Float
+  description    String
+  recommendation String?
+  isActive       Boolean  @default(true)
+}
+
+model GapRule {
+  id             String   @id @default(uuid())
+  parameter      String
+  threshold      Float
+  description    String
+  criticality    String   @default("Medium")
+  isActive       Boolean  @default(true)
+}
+
+model ActionLibrary {
   id          String   @id @default(uuid())
-  title       String
+  category    String
+  actionItem  String
+  benefit     String?
+  difficulty  String?
+  isActive    Boolean  @default(true)
+}
+
+model BenchmarkMaster {
+  id          String   @id @default(uuid())
+  industry    String
+  parameter   String
+  p50Value    Float?
+  p90Value    Float?
+  unit        String?
+  year        Int      @default(2024)
+}
+
+model CertificationApplicability {
+  id            String   @id @default(uuid())
+  industry      String
+  certification String
+  isRequired    Boolean  @default(false)
+  description   String?
+}
+
+model EmissionFactor {
+  id          String   @id @default(uuid())
+  activity    String
+  factor      Float
+  unit        String
+  source      String?
+  year        Int      @default(2024)
+}
+
+model ConfidenceThreshold {
+  id          String   @id @default(uuid())
+  dataType    String
+  minSamples  Int      @default(1)
+  threshold   Float    @default(0.7)
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
