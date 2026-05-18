@@ -1,0 +1,8 @@
+{
+  "name": "SAM Assessment",
+  "description": "Enterprise-grade assessment platform with React, Express, and Prisma.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
